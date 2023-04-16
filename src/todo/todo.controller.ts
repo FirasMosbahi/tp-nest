@@ -2,10 +2,10 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
+  Get, HttpException,
   Param,
   Patch,
-  Post,
+  Post, Put, Query,
   Version,
 } from '@nestjs/common';
 import { TodoService } from './todo.service';
@@ -13,6 +13,7 @@ import Todo from '../spec-classes/todo';
 import CreateTodoDTO from '../DTO/create-todo-DTO';
 import UpdateTodoDTO from '../DTO/update-todo-DTO';
 import TodoEntity from '../entities/todo-entity';
+import FindTodoFilterDTO from "../DTO/find-todo-filter-DTO";
 
 @Controller('todo')
 export class TodoController {
@@ -41,15 +42,40 @@ export class TodoController {
   }
   @Post()
   @Version('2')
-  async AddTodoToDb(@Body() body: CreateTodoDTO): Promise<TodoEntity> {
+  async addTodoToDb(@Body() body: CreateTodoDTO): Promise<TodoEntity> {
     return await this.todoService.addTodoToDb(body);
   }
   @Patch('/:id')
   @Version('2')
-  async UpdateTodoByIdToDb(
+  async updateTodoByIdToDb(
     @Param('id') id: number,
     @Body() body: UpdateTodoDTO,
   ) {
     return await this.todoService.updateTodoByIdToDb(id, body);
+  }
+  @Delete('/:id')
+  @Version('2')
+  async deleteTodoByIdFromDb(@Param('id') id : number):Promise<string>{
+    return await this.todoService.deleteTodoByIdFromBd(id);
+  }
+  @Delete('/soft/:id')
+  async softDeleteTodoByIdFromBd(@Param('id') id :number):Promise<string>{
+    return await this.todoService.softRemoveTodoByIdFromBd(id);
+  }
+  @Put('/recover/:id')
+  async recoverTodoByIdToBd(@Param('id') id : number) : Promise<TodoEntity>{
+    return await this.todoService.recoverTodoByIdToBd(id);
+  }
+  @Get('/count/perStatus')
+  async countTodosPerStatus(){
+    return await this.todoService.countTodosPerStatus();
+  }
+  @Get('/endpoint')
+  async todosEndpoint(@Query() filterDTO : FindTodoFilterDTO) : Promise<Array<TodoEntity>>{
+    return await this.todoService.todosEndpoint(filterDTO);
+  }
+  @Get('/endpoint/:id')
+  async todoEndpointById(@Param('id') id : number) :Promise<TodoEntity>{
+    return await this.todoService.todoEndpointById(id);
   }
 }

@@ -1,11 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
-import Todo, { TodoStatusEnum } from '../spec-classes/todo';
+import {HttpException, Inject, Injectable} from '@nestjs/common';
+import Todo, {TodoStatusEnum} from '../spec-classes/todo';
 import CreateTodoDTO from '../DTO/create-todo-DTO';
 import UpdateTodoDTO from '../DTO/update-todo-DTO';
 import IT from '../injection-tokens-config';
-import { InjectRepository } from '@nestjs/typeorm';
+import {InjectRepository} from '@nestjs/typeorm';
 import TodoEntity from '../entities/todo-entity';
-import { Repository } from 'typeorm';
+import {Repository} from 'typeorm';
+import FindTodoFilterDTO from "../DTO/find-todo-filter-DTO";
 
 @Injectable()
 export class TodoService {
@@ -79,5 +80,49 @@ export class TodoService {
     }
     const todoToUpdate = await this.todoRepository.update(id, updates);
     return updates;
+  }
+  async deleteTodoByIdFromBd(id:number){
+    await this.todoRepository.delete({id});
+    return `todo with id : ${id} deleted succcessfully`;
+  }
+  async softRemoveTodoByIdFromBd(id:number) : Promise<string>{
+    await this.todoRepository.softDelete({id});
+    return `todo with id : ${id} soft deleted successfully`
+  }
+  async recoverTodoByIdToBd(id:number) : Promise<TodoEntity>{
+    return await this.todoRepository.recover({id});
+  }
+  async countTodosPerStatus(){
+    return {
+      'actif' : await this.todoRepository.count({where : {status : TodoStatusEnum.actif}}),
+      'waiting' : await this.todoRepository.count({where : {status : TodoStatusEnum.waiting}}),
+      'done' : await this.todoRepository.count({where : {status : TodoStatusEnum.done}}),
+    }
+  }
+  async todosEndpoint(filterDTO : FindTodoFilterDTO):Promise<Array<TodoEntity>>{
+    let filter1 = {};
+    let filter2 = {};
+    if(filterDTO.status !== null){
+      filter1 = {status : filterDTO.status};
+      filter2 = {status : filterDTO.status};
+    }
+    if(filterDTO.description !== null){
+      filter1 = {description : filterDTO.description , ...filter1};
+      filter2 = {name : filterDTO.description , ...filter2};
+    }
+    let options = {where : [filter1,filter2]};
+    if(filterDTO.page && filterDTO.take && options){
+      let take:number = filterDTO.take;
+      let skip:number = filterDTO.take*(filterDTO.page-1);
+    }
+    return await this.todoRepository.find({where : [filter1,filter2] , withDeleted : true,take,skip});
+  }
+  async todoEndpointById(id : number) : Promise<TodoEntity>{
+    const todos : Array<TodoEntity> = await this.todoRepository.find({where : {id} ,withDeleted : true});
+    if(todos.length){
+      return todos[0];
+    }else {
+      throw new HttpException('no todo with that id' , 404);
+    }
   }
 }
